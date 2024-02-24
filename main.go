@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"syscall"
 )
 
 func main() {
@@ -14,15 +15,16 @@ func main() {
 	for {
 		fmt.Printf("(pingstarter) > ")
 
-		line, _, err := reader.ReadLine()
+		_, _, err := reader.ReadLine()
 		if err != nil {
 			log.Fatalf("ReadLine %v", err)
 		}
 
 		var procAttr os.ProcAttr
+		procAttr.Sys = &syscall.SysProcAttr{Setpgid: true}
 		procAttr.Files = []*os.File{nil, os.Stdout, os.Stderr}
 
-		process, err := os.StartProcess(string(line), []string{string(line)}, &procAttr)
+		process, err := os.StartProcess("/usr/bin/ping", []string{"/usr/bin/ping", "-c", "3", "yahoo.co.jp"}, &procAttr)
 		if err != nil {
 			log.Fatalf("StartProcess %v", err)
 		}
