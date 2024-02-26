@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 var signals = []os.Signal{
@@ -56,6 +58,8 @@ func main() {
 		panic(-1)
 	}()
 
+	pgrpid := tcgetpgrp()
+
 	reader := bufio.NewReader(os.Stdin)
 
 	// バックグラウンド実行終了後の終了メッセージを貯めるキュー
@@ -92,6 +96,7 @@ func main() {
 				}
 
 				if foreground {
+					tcsetpgrp(pgrpid)
 				} else {
 					bgTerminateMsgs <- "terminated."
 				}
@@ -119,4 +124,13 @@ func main() {
 			}
 		}
 	}
+}
+
+func tcgetpgrp() int {
+	pgrpid, _ := unix.IoctlGetInt(syscall.Stdin, unix.TIOCGPGRP)
+	return pgrpid
+}
+
+func tcsetpgrp(pgrpid int) {
+	unix.IoctlSetPointerInt(syscall.Stdin, unix.TIOCSPGRP, pgrpid)
 }
