@@ -37,7 +37,7 @@ var signals = []os.Signal{
 	syscall.SIGTERM,
 	syscall.SIGTSTP,
 	syscall.SIGTTIN,
-	syscall.SIGTTOU,
+	//syscall.SIGTTOU, よくわからないが飛んでくるので無視する
 	syscall.SIGUNUSED,
 	//syscall.SIGURG, 通常は無視
 	syscall.SIGTRAP,
@@ -50,6 +50,10 @@ var signals = []os.Signal{
 }
 
 func main() {
+
+	// よくわからないが飛んでくるので無視する
+	signal.Ignore(syscall.SIGTTOU)
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, signals...)
 	go func() {
