@@ -11,56 +11,9 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-var signals = []os.Signal{
-	syscall.SIGABRT,
-	syscall.SIGALRM,
-	syscall.SIGBUS,
-	//syscall.SIGCHLD, 通常は無視
-	//syscall.SIGCLD, 通常は無視
-	syscall.SIGCONT,
-	syscall.SIGFPE,
-	syscall.SIGHUP,
-	syscall.SIGILL,
-	//syscall.SIGIO, 通常は無視
-	syscall.SIGIOT,
-	syscall.SIGINT,
-	syscall.SIGKILL,
-	syscall.SIGPIPE,
-	syscall.SIGPOLL,
-	syscall.SIGPROF,
-	syscall.SIGPWR,
-	syscall.SIGQUIT,
-	syscall.SIGSEGV,
-	syscall.SIGSTKFLT,
-	syscall.SIGSTOP,
-	syscall.SIGSYS,
-	syscall.SIGTERM,
-	syscall.SIGTSTP,
-	syscall.SIGTTIN,
-	//syscall.SIGTTOU, よくわからないが飛んでくるので無視する
-	syscall.SIGUNUSED,
-	//syscall.SIGURG, 通常は無視
-	syscall.SIGTRAP,
-	syscall.SIGUSR1,
-	syscall.SIGUSR2,
-	syscall.SIGVTALRM,
-	//syscall.SIGWINCH, 通常は無視
-	syscall.SIGXCPU,
-	syscall.SIGXFSZ,
-}
-
 func main() {
 
-	// よくわからないが飛んでくるので無視する
-	signal.Ignore(syscall.SIGTTOU)
-
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, signals...)
-	go func() {
-		s := <-sigs
-		log.Fatalf("got signal:%s\n", s)
-		panic(-1)
-	}()
+	signal.Ignore(syscall.SIGTTIN, syscall.SIGTTOU)
 
 	pgrpid := tcgetpgrp()
 
@@ -130,11 +83,28 @@ func main() {
 	}
 }
 
+// 現在のプロセスの制御端末を取得
+func devTty() *os.File {
+	tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)
+	if err != nil {
+		log.Fatalf("Couldn't open /dev/tty %s", err)
+	}
+	return tty
+}
+
+// 指定した制御端末のフォアグラウンドプロセスグループIDを取得
 func tcgetpgrp() int {
-	pgrpid, _ := unix.IoctlGetInt(syscall.Stdin, unix.TIOCGPGRP)
+	tty := devTty()
+	defer tty.Close()
+
+	pgrpid, _ := unix.IoctlGetInt(int(tty.Fd()), unix.TIOCGPGRP)
 	return pgrpid
 }
 
+// 指定したプロセスグループを指定した制御端末のフォアグラウンドプロセスグループにする。
 func tcsetpgrp(pgrpid int) {
-	unix.IoctlSetPointerInt(syscall.Stdin, unix.TIOCSPGRP, pgrpid)
+	tty := devTty()
+	defer tty.Close()
+
+	unix.IoctlSetPointerInt(int(tty.Fd()), unix.TIOCSPGRP, pgrpid)
 }
